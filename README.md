@@ -1,5 +1,7 @@
 # BatteryBuddy
 
+<p align="center"><img src="res/drawable-nodpi/ic_launcher.png" width="160" alt="BatteryBuddy app icon"></p>
+
 A port of [BatteryBuddy](https://github.com/kissalexandra/BatteryBuddy) — the cute battery-indicator jailbreak tweak for iOS — to Android, specifically ColorOS's SystemUI. An Xposed-style module for [Vector](https://github.com/JingMatrix/Vector) / LSPosed.
 
 - Replaces the stock battery icon with a rounded body, a face, and a terminal nub — happy, neutral, sad, or a dead "X eyes" look below a configurable low-battery threshold. Always happy while charging.
