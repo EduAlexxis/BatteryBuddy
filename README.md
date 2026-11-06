@@ -52,7 +52,7 @@ stubs/                     compile-time stubs of the Xposed API (not shipped)
 
 ## Credits
 
-Ported from [kissalexandra/BatteryBuddy](https://github.com/kissalexandra/BatteryBuddy) (archived), the original iOS jailbreak tweak. The battery body, face, and the charging plug/cord glyph are all redrawn here to match that design — including the plug traced directly from its `StatusBarCharger.png` asset — but every line of Java/Android code in this repo was written independently for this port; the original Objective-C source was never read.
+Ported from [kissalexandra/BatteryBuddy](https://github.com/kissalexandra/BatteryBuddy) (archived), the original iOS jailbreak tweak. The battery body, face, and the charging plug/cord glyph are all redrawn here to match that design — including the plug traced directly from its `StatusBarCharger.png` asset — but every line of Java/Android code in this repo was written independently for this port.
 
 ## License
 
