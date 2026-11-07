@@ -41,6 +41,8 @@ public class SettingsActivity extends Activity {
   public static final String KEY_CHARGE_ICON_STYLE = "charge_icon_style"; // "original" | "cord"
   public static final String KEY_CHARGE_COLOR_MODE = "charge_color_mode"; // "system" | "light" | "dark" | "custom"
   public static final String KEY_CHARGE_CUSTOM_COLOR = "charge_custom_color";
+  public static final String KEY_SHOW_PERCENT = "show_percent"; // boolean
+  public static final String KEY_PERCENT_SIDE = "percent_side"; // "left" | "right"
 
   public static final int DEFAULT_HAPPY_MIN = 75;
   public static final int DEFAULT_NEUTRAL_MIN = 50;
@@ -52,6 +54,8 @@ public class SettingsActivity extends Activity {
   public static final String DEFAULT_CHARGE_ICON_STYLE = "original";
   public static final String DEFAULT_CHARGE_COLOR_MODE = "system";
   public static final String DEFAULT_CHARGE_CUSTOM_COLOR = "#000000";
+  public static final boolean DEFAULT_SHOW_PERCENT = false;
+  public static final String DEFAULT_PERCENT_SIDE = "right";
 
   static final int ACCENT = Color.parseColor("#8FBF8A");
 
@@ -71,6 +75,10 @@ public class SettingsActivity extends Activity {
   SeekBar thicknessSeek;
   TextView thicknessLabel;
   String colorMode;
+  boolean showPercent;
+  String percentSide;
+  TextView segPercentOff, segPercentOn, segPercentLeft, segPercentRight;
+  LinearLayout percentSideBlock;
 
   BatteryPreviewView previewView;
   TextView previewCaption;
@@ -133,6 +141,8 @@ public class SettingsActivity extends Activity {
     chargeIconStyle = prefs.getString(KEY_CHARGE_ICON_STYLE, DEFAULT_CHARGE_ICON_STYLE);
     chargeColorMode = prefs.getString(KEY_CHARGE_COLOR_MODE, DEFAULT_CHARGE_COLOR_MODE);
     String chargeCustomColor = prefs.getString(KEY_CHARGE_CUSTOM_COLOR, DEFAULT_CHARGE_CUSTOM_COLOR);
+    showPercent = prefs.getBoolean(KEY_SHOW_PERCENT, DEFAULT_SHOW_PERCENT);
+    percentSide = prefs.getString(KEY_PERCENT_SIDE, DEFAULT_PERCENT_SIDE);
 
     ScrollView scroll = new ScrollView(this);
     LinearLayout root = new LinearLayout(this);
@@ -358,6 +368,35 @@ public class SettingsActivity extends Activity {
 
     root.addView(chargeCard);
 
+    // --- Battery percentage card ---
+    LinearLayout percentCard = card();
+    percentCard.addView(sectionTitle("Battery percentage"));
+    percentCard.addView(sectionSubtitle("Show the percentage as text next to the battery icon, "
+        + "and choose which side it sits on. Off hides it."));
+
+    segPercentOff = segmentButton("Off");
+    segPercentOn = segmentButton("Show");
+    percentCard.addView(segmentRow(segPercentOff, segPercentOn));
+    segPercentOff.setOnClickListener(v -> { showPercent = false; updatePercentSegmented(); updatePreview(); });
+    segPercentOn.setOnClickListener(v -> { showPercent = true; updatePercentSegmented(); updatePreview(); });
+
+    percentSideBlock = new LinearLayout(this);
+    percentSideBlock.setOrientation(LinearLayout.VERTICAL);
+    TextView sideTitle = new TextView(this);
+    sideTitle.setText("Side");
+    sideTitle.setTextSize(14);
+    sideTitle.setPadding(0, dp(16), 0, 0);
+    percentSideBlock.addView(sideTitle);
+    segPercentLeft = segmentButton("Left");
+    segPercentRight = segmentButton("Right");
+    percentSideBlock.addView(segmentRow(segPercentLeft, segPercentRight));
+    segPercentLeft.setOnClickListener(v -> { percentSide = "left"; updatePercentSegmented(); updatePreview(); });
+    segPercentRight.setOnClickListener(v -> { percentSide = "right"; updatePercentSegmented(); updatePreview(); });
+    percentCard.addView(percentSideBlock);
+    updatePercentSegmented();
+
+    root.addView(percentCard);
+
     // --- Mood thresholds card ---
     LinearLayout moodCard = card();
     moodCard.addView(sectionTitle("Mood thresholds"));
@@ -499,6 +538,32 @@ public class SettingsActivity extends Activity {
     style(segDark, "dark".equals(colorMode));
     style(segCustom, "custom".equals(colorMode));
     customColorsBlock.setVisibility("custom".equals(colorMode) ? View.VISIBLE : View.GONE);
+  }
+
+  /** Pill-shaped two-option segmented row, same look as the charging icon style picker. */
+  LinearLayout segmentRow(TextView a, TextView b) {
+    LinearLayout seg = new LinearLayout(this);
+    seg.setOrientation(LinearLayout.HORIZONTAL);
+    GradientDrawable bg = new GradientDrawable();
+    bg.setCornerRadius(dp(14));
+    bg.setColor(overlayColor(0.06f));
+    seg.setBackground(bg);
+    seg.setPadding(dp(4), dp(4), dp(4), dp(4));
+    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+    lp.topMargin = dp(12);
+    seg.setLayoutParams(lp);
+    seg.addView(a, new LinearLayout.LayoutParams(0, dp(40), 1f));
+    seg.addView(b, new LinearLayout.LayoutParams(0, dp(40), 1f));
+    return seg;
+  }
+
+  void updatePercentSegmented() {
+    style(segPercentOff, !showPercent);
+    style(segPercentOn, showPercent);
+    style(segPercentLeft, "left".equals(percentSide));
+    style(segPercentRight, !"left".equals(percentSide));
+    percentSideBlock.setVisibility(showPercent ? View.VISIBLE : View.GONE);
   }
 
   void updateChargeSegmented() {
@@ -644,7 +709,8 @@ public class SettingsActivity extends Activity {
     int[] colors = resolveColors(colorMode); // {outline, fill}
     float ratio = 0.06f + (thicknessSeek.getProgress() / 100f) * 0.24f;
     int chargeColor = resolveChargeColor(chargeColorMode);
-    previewView.update(colors[1], colors[0], ratio, mood, charging, chargeIconStyle, chargeColor);
+    previewView.update(colors[1], colors[0], ratio, mood, charging, chargeIconStyle, chargeColor,
+        showPercent, "left".equals(percentSide), pct);
 
     String moodName = mood.name().charAt(0) + mood.name().substring(1).toLowerCase();
     previewCaption.setText(pct + "%" + (charging ? " · Charging" : "") + " · " + moodName);
@@ -677,6 +743,8 @@ public class SettingsActivity extends Activity {
         .putString(KEY_CHARGE_ICON_STYLE, chargeIconStyle)
         .putString(KEY_CHARGE_COLOR_MODE, chargeColorMode)
         .putString(KEY_CHARGE_CUSTOM_COLOR, chargeCustomColor)
+        .putBoolean(KEY_SHOW_PERCENT, showPercent)
+        .putString(KEY_PERCENT_SIDE, percentSide)
         .commit();
 
     new AlertDialog.Builder(this)

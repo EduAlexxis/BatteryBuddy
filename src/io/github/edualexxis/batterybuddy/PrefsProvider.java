@@ -30,7 +30,8 @@ public class PrefsProvider extends ContentProvider {
         SettingsActivity.KEY_COLOR_MODE, SettingsActivity.KEY_CUSTOM_OUTLINE_COLOR,
         SettingsActivity.KEY_CUSTOM_FILL_COLOR, SettingsActivity.KEY_OUTLINE_THICKNESS,
         SettingsActivity.KEY_CHARGE_ICON_STYLE, SettingsActivity.KEY_CHARGE_COLOR_MODE,
-        SettingsActivity.KEY_CHARGE_CUSTOM_COLOR
+        SettingsActivity.KEY_CHARGE_CUSTOM_COLOR, SettingsActivity.KEY_SHOW_PERCENT,
+        SettingsActivity.KEY_PERCENT_SIDE
     };
     MatrixCursor cursor = new MatrixCursor(columns, 1);
     cursor.addRow(new Object[]{
@@ -43,7 +44,9 @@ public class PrefsProvider extends ContentProvider {
         prefs.getInt(SettingsActivity.KEY_OUTLINE_THICKNESS, SettingsActivity.DEFAULT_OUTLINE_THICKNESS),
         prefs.getString(SettingsActivity.KEY_CHARGE_ICON_STYLE, SettingsActivity.DEFAULT_CHARGE_ICON_STYLE),
         prefs.getString(SettingsActivity.KEY_CHARGE_COLOR_MODE, SettingsActivity.DEFAULT_CHARGE_COLOR_MODE),
-        prefs.getString(SettingsActivity.KEY_CHARGE_CUSTOM_COLOR, SettingsActivity.DEFAULT_CHARGE_CUSTOM_COLOR)
+        prefs.getString(SettingsActivity.KEY_CHARGE_CUSTOM_COLOR, SettingsActivity.DEFAULT_CHARGE_CUSTOM_COLOR),
+        prefs.getBoolean(SettingsActivity.KEY_SHOW_PERCENT, SettingsActivity.DEFAULT_SHOW_PERCENT) ? 1 : 0,
+        prefs.getString(SettingsActivity.KEY_PERCENT_SIDE, SettingsActivity.DEFAULT_PERCENT_SIDE)
     });
     return cursor;
   }

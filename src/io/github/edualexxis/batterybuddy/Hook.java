@@ -96,6 +96,12 @@ public class Hook implements IXposedHookLoadPackage {
             else if (level >= sadMin) mood = BatteryPaint.Mood.SAD;
             else mood = BatteryPaint.Mood.DEAD; // 1..sadMin-1, and 0
 
+            if (prefs != null && prefs.showPercent) {
+              setPercentSetting(ctx, 2);
+              applyPercent(d, prefs.percentLeft);
+            } else if (prefs != null) {
+              setPercentSetting(ctx, 0);
+            }
             BatteryPaint.drawCuteBattery(canvas, new RectF(bounds), fillColor, outlineColor, mood, strokeRatio);
             mh.setResult(null); // we painted the whole icon; skip ColorOS's own draw entirely
           } catch (Throwable t) {
@@ -110,6 +116,74 @@ public class Hook implements IXposedHookLoadPackage {
     }
 
     hookChargeIcon();
+  }
+
+  /**
+   * Moves ColorOS's own percentage TextView to the chosen side of the battery icon. Finds the
+   * view hosting our drawable (its Callback), then looks for a sibling TextView whose resource id
+   * contains "percent" at that level or a few levels up, and re-inserts it before/after the
+   * anchor. Layout changes are posted rather than done inside draw(), and only when the order is
+   * actually wrong, so this settles after one pass instead of re-running every frame.
+   * Untested on-device: the id match is a best guess at ColorOS's naming.
+   */
+  /** ColorOS's own "battery percentage" setting (system table). On this device 2 = shown
+   * outside the icon (percentage was visible beside the battery at 2) and 0 = hidden (read back
+   * after hiding it in ColorOS's own settings).
+   * Written from SystemUI, which runs as the system uid and may write system settings. */
+  static void setPercentSetting(Context ctx, int value) {
+    if (ctx == null) return;
+    try {
+      ContentResolver cr = ctx.getContentResolver();
+      if (android.provider.Settings.System.getInt(cr, "display_power_percent", -1) != value) {
+        android.provider.Settings.System.putInt(cr, "display_power_percent", value);
+      }
+    } catch (Throwable t) {
+      XposedBridge.log(t);
+    }
+  }
+
+  static void applyPercent(Drawable d, boolean left) {
+    try {
+      if (!(d.getCallback() instanceof View)) return;
+      View anchor = (View) d.getCallback();
+      for (int depth = 0; depth < 4 && anchor.getParent() instanceof android.view.ViewGroup; depth++) {
+        final android.view.ViewGroup group = (android.view.ViewGroup) anchor.getParent();
+        final View a = anchor;
+        android.widget.TextView tv = null;
+        for (int i = 0; i < group.getChildCount(); i++) {
+          View c = group.getChildAt(i);
+          if (!(c instanceof android.widget.TextView) || c.getId() == View.NO_ID) continue;
+          try {
+            if (c.getResources().getResourceEntryName(c.getId()).toLowerCase().contains("percent")) {
+              tv = (android.widget.TextView) c;
+              break;
+            }
+          } catch (Throwable ignored) {}
+        }
+        if (tv != null) {
+          final android.widget.TextView text = tv;
+          if (text.getVisibility() != View.VISIBLE) text.setVisibility(View.VISIBLE);
+          // a little breathing room between the number and the battery icon
+          int gapPx = Math.round(3 * text.getResources().getDisplayMetrics().density);
+          int wantStart = left ? 0 : gapPx, wantEnd = left ? gapPx : 0;
+          if (text.getPaddingStart() != wantStart || text.getPaddingEnd() != wantEnd) {
+            text.setPaddingRelative(wantStart, text.getPaddingTop(), wantEnd, text.getPaddingBottom());
+          }
+          boolean isLeft = group.indexOfChild(text) < group.indexOfChild(a);
+          if (isLeft != left) {
+            text.post(() -> {
+              group.removeView(text);
+              int idx = group.indexOfChild(a);
+              group.addView(text, left ? idx : idx + 1);
+            });
+          }
+          return;
+        }
+        anchor = group;
+      }
+    } catch (Throwable t) {
+      XposedBridge.log(t);
+    }
   }
 
   /**
@@ -235,6 +309,7 @@ public class Hook implements IXposedHookLoadPackage {
     int happyMin, neutralMin, sadMin, outlineThickness;
     String colorMode, customOutlineColor, customFillColor, chargeIconStyle;
     String chargeColorMode, chargeCustomColor;
+    boolean showPercent, percentLeft;
 
     static Prefs cached;
     static long cachedAt;
@@ -261,6 +336,8 @@ public class Hook implements IXposedHookLoadPackage {
             pr.chargeColorMode = c.getString(c.getColumnIndexOrThrow(SettingsActivity.KEY_CHARGE_COLOR_MODE));
             if (pr.chargeColorMode == null) pr.chargeColorMode = SettingsActivity.DEFAULT_CHARGE_COLOR_MODE;
             pr.chargeCustomColor = c.getString(c.getColumnIndexOrThrow(SettingsActivity.KEY_CHARGE_CUSTOM_COLOR));
+            pr.showPercent = c.getInt(c.getColumnIndexOrThrow(SettingsActivity.KEY_SHOW_PERCENT)) != 0;
+            pr.percentLeft = "left".equals(c.getString(c.getColumnIndexOrThrow(SettingsActivity.KEY_PERCENT_SIDE)));
             cached = pr;
             cachedAt = now;
           }
